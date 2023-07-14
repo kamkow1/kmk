@@ -1,2 +1,4 @@
-fnc main()
-endfnc
+fnc main(testArg)
+endfnc;
+
+main("test");

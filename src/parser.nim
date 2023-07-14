@@ -8,6 +8,8 @@ type
     Ident,
     OParen,
     CParen,
+    String,
+    SemiColon,
 
   Token = object
     kind: TokenKind
@@ -19,18 +21,16 @@ proc tokenize*(text: string): seq[Token] =
   var tokens = newSeq[Token](0)
   var i = 0
   while i < len(text):
-    var c = text[i]
-    if isSpaceAscii(c):
+    if isSpaceAscii(text[i]):
       inc i
       continue
 
     # possible identifier or keyword
-    if isAlphaAscii(c):
+    if isAlphaAscii(text[i]):
       var buf: string
-      while isAlphaNumeric(c):
-        buf = buf & $c
+      while isAlphaNumeric(text[i]):
+        buf = buf & $text[i]
         inc i
-        c = text[i]
      
       var kind: TokenKind
       case buf:
@@ -43,23 +43,39 @@ proc tokenize*(text: string): seq[Token] =
 
       tokens.add(Token(
         kind: kind,
-        text: buf
+        text: buf,
       ))
       continue
 
-    case c
+    case text[i]
     of '(':
       tokens.add(Token(
         kind: TokenKind.OParen,
-        text: "("
+        text: "(",
       ))
     of ')':
       tokens.add(Token(
         kind: TokenKind.CParen,
-        text: ")"
+        text: ")",
+      ))
+    of ';':
+      tokens.add(Token(
+        kind: TokenKind.SemiColon,
+        text: ";",
+      ))
+    of '"':
+      inc i
+      var buf: string
+      while text[i] != '"':
+        buf = buf & $text[i]
+        inc i
+
+      tokens.add(Token(
+        kind: TokenKind.String,
+        text: buf,
       ))
     else:
-      raise newException(UnknownTokenError, "Found an unknown token `" & $c & "`")
+      raise newException(UnknownTokenError, "Found an unknown token `" & $text[i] & "`")
     inc i
     continue
 
