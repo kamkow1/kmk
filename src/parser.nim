@@ -1,5 +1,4 @@
 import std/strutils
-import tables
 import print
 
 type
@@ -13,6 +12,7 @@ type
     CParen,
     String,
     SemiColon,
+    Comma,
 
   Token = object
     kind: TokenKind
@@ -45,7 +45,7 @@ type
 
   Function = object
     name: string
-    arguments: Table[string, string]
+    arguments: seq[string]
     body: seq[Statement]
 
 func newParser*(tokens: seq[Token]): Parser =
@@ -110,19 +110,23 @@ proc parseBlock(self: var Parser): seq[Statement] =
 
   return statements
 
-proc parseFunctionArguments(self: var Parser): Table[string, string] =
+proc parseFunctionArguments(self: var Parser): seq[string] =
   var
-    table = initTable[string, string]()
+    arguments = newSeq[string]()
     token = self.consume()
 
   while token.kind != TokenKind.CParen:
+    if token.kind == TokenKind.Comma:
+      token = self.consume()
+      continue
+
     if token.kind != TokenKind.Ident:
       raise newException(
         UnexpectedTokenError,
         "Expected `" & $TokenKind.Ident & "` but got `" & $token.kind & "`",
       )
 
-    table[token.text] = ""
+    arguments.add(token.text)
     token = self.consume()
 
   if token.kind != TokenKind.CParen:
@@ -131,7 +135,7 @@ proc parseFunctionArguments(self: var Parser): Table[string, string] =
       "Unclosed parenthesis. Expected `)`",
     )
 
-  return table
+  return arguments 
 
 proc parseFunction(self: var Parser): Function =
   var
@@ -202,6 +206,8 @@ proc tokenize*(text: string): seq[Token] =
       tokens.add(Token(kind: TokenKind.CParen, text: ")"))
     of ';':
       tokens.add(Token(kind: TokenKind.SemiColon, text: ";"))
+    of ',':
+      tokens.add(Token(kind: TokenKind.Comma, text: ","))
     of '"':
       inc i
       var buf: string
