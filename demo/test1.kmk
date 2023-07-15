@@ -1,4 +1,5 @@
 fnc main(testArg)
-endfnc;
+begin
+	print("hello");
+end
 
-main("test");

@@ -11,3 +11,4 @@ bin           = @["kmk"]
 # Dependencies
 
 requires "nim >= 1.9.5"
+requires "print >= 1.0.2"

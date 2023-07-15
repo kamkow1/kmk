@@ -33,7 +33,8 @@ proc main: int =
  
   let text = readAll(file)
   let tokens = tokenize(text)
-  echo tokens
+  var parser = newParser(tokens)
+  parser.parse()
 
   return 0
 
