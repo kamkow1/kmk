@@ -64,11 +64,14 @@ func previous(self: Parser): Token =
   return self.tokens[self.current - 1]
 
 proc parseExpr(self: var Parser): Expr =
-  let current = self.current()
+  var current = self.current()
+
+  if current.kind == TokenKind.Comma:
+    self.consume() # consume `,`
+    current = self.consume()
 
   case current.kind
   of TokenKind.String: # string literal
-    self.consume()
     return StringLiteralExpr(
       kind: ExprKind.StringLiteral,
       text: current.text,
@@ -84,7 +87,11 @@ proc parseExpr(self: var Parser): Expr =
       let expression = self.parseExpr()
       functionCallExpr.arguments.add(expression)
     return functionCallExpr
-  else: discard
+  else:
+    raise newException(
+      UnexpectedTokenError,
+      "Unhandled token " & $current.kind,
+    )
 
 proc parseStatement(self: var Parser): Statement =
   let expression = self.parseExpr()
@@ -135,7 +142,7 @@ proc parseFunctionArguments(self: var Parser): seq[string] =
       "Unclosed parenthesis. Expected `)`",
     )
 
-  return arguments 
+  return arguments
 
 proc parseFunction(self: var Parser): Function =
   var

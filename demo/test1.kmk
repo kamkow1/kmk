@@ -1,5 +1,5 @@
 fnc main(testArg, anotherArg)
 begin
-	print("hello");
+	print("hello", "world");
 end
 
