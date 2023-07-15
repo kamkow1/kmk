@@ -1,4 +1,4 @@
-fnc main(testArg, anotherArg)
+function main(testArg, anotherArg)
 begin
 	print("hello", "world");
 end

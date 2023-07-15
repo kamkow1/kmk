@@ -4,7 +4,7 @@ import print
 type
   TokenKind = enum
     Eof,
-    Fnc,
+    Func,
     Begin,
     End,
     Ident,
@@ -166,7 +166,7 @@ proc parse*(self: var Parser) =
   let token = self.consume()
 
   case token.kind
-  of TokenKind.Fnc:
+  of TokenKind.Func:
     let function = self.parseFunction()
     print(function)
   else:
@@ -194,8 +194,8 @@ proc tokenize*(text: string): seq[Token] =
      
       var kind: TokenKind
       case buf:
-      of "fnc":
-        kind = TokenKind.Fnc
+      of "function":
+        kind = TokenKind.Func
       of "end":
         kind = TokenKind.End
       of "begin":
