@@ -3,3 +3,4 @@ begin
 	print("hello", "world", $testArg);
 end
 
+print("kamkow1");

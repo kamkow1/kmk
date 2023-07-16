@@ -1,19 +1,18 @@
 import std/strutils
-import print
 
 type
   TokenKind = enum
-    Eof,
-    Func,
-    Begin,
-    End,
-    Ident,
-    OParen,
-    CParen,
-    String,
-    SemiColon,
-    Comma,
-    VariableRef
+    tkEof,
+    tkFunc,
+    tkBegin,
+    tkEnd,
+    tkIdent,
+    tkOParen,
+    tkCParen,
+    tkString,
+    tkSemiColon,
+    tkComma,
+    tkVariableRef
 
   Token = object
     kind: TokenKind
@@ -26,16 +25,24 @@ type
   Parser* = object
     tokens: seq[Token]
     current: int
+  
+  NodeKind = enum
+    nkFunction,
+    nkStatement,
+    nkExpression,
+
+  Node = ref object of RootObj
+    nodeKind: NodeKind
 
   ExprKind = enum
-    StringLiteral,
-    FunctionCall,
-    VariableRef
+    ekStringLiteral,
+    ekFunctionCall,
+    ekVariableRef
 
-  Expr = ref object of RootObj
-    kind: ExprKind
+  Expr = ref object of Node
+    exprKind: ExprKind
   
-  Statement = ref object of RootObj 
+  Statement = ref object of Node
     expression: Expr
 
   FunctionCallExpr = ref object of Expr
@@ -48,7 +55,7 @@ type
   VariableRefExpr = ref object of Expr
     name: string
 
-  Function = object
+  Function = ref object of Node
     name: string
     arguments: seq[string]
     body: seq[Statement]
@@ -66,32 +73,35 @@ func current(self: Parser): Token =
 proc parseExpr(self: var Parser): Expr =
   var current = self.current()
 
-  if current.kind == TokenKind.Comma:
+  if current.kind == TokenKind.tkComma:
     current = self.consume() # consume `,`
 
   case current.kind
-  of TokenKind.String: # string literal
+  of TokenKind.tkString: # string literal
     return StringLiteralExpr(
-      kind: ExprKind.StringLiteral,
+      nodeKind: NodeKind.nkExpression,
+      exprKind: ExprKind.ekStringLiteral,
       text: current.text,
     )
-  of TokenKind.Ident: # function call
+  of TokenKind.tkIdent: # function call
     var functionCallExpr = FunctionCallExpr(
-      kind: ExprKind.FunctionCall,
+      nodeKind: NodeKind.nkExpression,
+      exprKind: ExprKind.ekFunctionCall,
       name: current.text,
       arguments: newSeq[Expr](),
     )
     self.consume() # consume `(`
     var token = self.consume()
-    while token.kind != TokenKind.CParen:
+    while token.kind != TokenKind.tkCParen:
       let expression = self.parseExpr()
       functionCallExpr.arguments.add(expression)
       token = self.consume()
     self.consume()
     return functionCallExpr
-  of TokenKind.VariableRef: # variable reference
+  of TokenKind.tkVariableRef: # variable reference
     return VariableRefExpr(
-      kind: ExprKind.VariableRef,
+      nodeKind: NodeKind.nkExpression,
+      exprKind: ExprKind.ekVariableRef,
       name: current.text,
     )
   else:
@@ -102,21 +112,24 @@ proc parseExpr(self: var Parser): Expr =
 
 proc parseStatement(self: var Parser): Statement =
   let expression = self.parseExpr()
-  if self.current().kind != SemiColon:
+  if self.current().kind != TokenKind.tkSemiColon:
     raise newException(
       UnexpectedTokenError,
       "parseStatement(): Expected `;` but found " & $self.current(),
     )
-  return Statement(expression: expression)
+  return Statement(
+    nodeKind: NodeKind.nkStatement,
+    expression: expression,
+  )
 
 proc parseBlock(self: var Parser): seq[Statement] =
   var statements = newSeq[Statement]()
 
-  while self.consume().kind != TokenKind.End:
+  while self.consume().kind != TokenKind.tkEnd:
     let statement = self.parseStatement()
     statements.add(statement)
 
-  if self.current().kind != TokenKind.End:
+  if self.current().kind != TokenKind.tkEnd:
     raise newException(
       UnexpectedTokenError,
       "parseBlock(): Unclosed block. Expected `end`",
@@ -128,23 +141,23 @@ proc parseFunctionArguments(self: var Parser): seq[string] =
     arguments = newSeq[string]()
     token = self.consume()
 
-  while token.kind != TokenKind.CParen:
-    if token.kind == TokenKind.Comma:
+  while token.kind != TokenKind.tkCParen:
+    if token.kind == TokenKind.tkComma:
       token = self.consume()
       continue
 
-    if token.kind != TokenKind.Ident:
+    if token.kind != TokenKind.tkIdent:
       raise newException(
         UnexpectedTokenError,
         "parseFunctionArguments() Expected `" &
-        $TokenKind.Ident &
+        $TokenKind.tkIdent &
         "` but got `" & $token.kind & "`",
       )
 
     arguments.add(token.text)
     token = self.consume()
 
-  if token.kind != TokenKind.CParen:
+  if token.kind != TokenKind.tkCParen:
     raise newException(
       UnexpectedTokenError,
       "parseFunctionArguments(): Unclosed parenthesis. Expected `)`",
@@ -154,34 +167,49 @@ proc parseFunctionArguments(self: var Parser): seq[string] =
 
 proc parseFunction(self: var Parser): Function =
   var
-    function: Function
     token = self.consume()
+    name: string
+    arguments: seq[string]
+    body: seq[Statement]
 
-  while token.kind != TokenKind.End:
+  while token.kind != TokenKind.tkEnd:
     case token.kind
-    of TokenKind.Ident:
-      function.name = token.text
-    of TokenKind.OParen:
-      function.arguments = self.parseFunctionArguments()
-    of TokenKind.Begin:
-      function.body = self.parseBlock()
+    of TokenKind.tkIdent:
+      name = token.text
+    of TokenKind.tkOParen:
+      arguments = self.parseFunctionArguments()
+    of TokenKind.tkBegin:
+      body = self.parseBlock()
       break # nothing left to parse
     else: discard
     token = self.consume()
-  return function
+  return Function(
+    nodeKind: NodeKind.nkFunction,
+    name: name,
+    arguments: arguments,
+    body: body
+  )
 
-proc parse*(self: var Parser) =
-  let token = self.consume()
+proc parse*(self: var Parser): seq[Node] =
+  var
+    token = self.consume()
+    nodes = newSeq[Node]()
 
-  case token.kind
-  of TokenKind.Func:
-    let function = self.parseFunction()
-    print(function)
-  else:
-    raise newException(
-      UnhandledTokenError,
-      "parse(): Found an unhandled token `" & $token.kind & "`",
-    )
+  while token.kind != TokenKind.tkEof:
+    case token.kind
+    of TokenKind.tkFunc: # function declaration
+      let function = self.parseFunction()
+      nodes.add(function)
+    of TokenKind.tkIdent: # function call
+      let statement = self.parseStatement()
+      nodes.add(statement)
+    else:
+      raise newException(
+        UnhandledTokenError,
+        "parse(): Found an unhandled token `" & $token.kind & "`",
+      )
+    token = self.consume()
+  return nodes
 
 proc tokenize*(text: string): seq[Token] =
   var
@@ -203,40 +231,40 @@ proc tokenize*(text: string): seq[Token] =
       var kind: TokenKind
       case buf:
       of "function":
-        kind = TokenKind.Func
+        kind = TokenKind.tkFunc
       of "end":
-        kind = TokenKind.End
+        kind = TokenKind.tkEnd
       of "begin":
-        kind = TokenKind.Begin
+        kind = TokenKind.tkBegin
       else:
-        kind = TokenKind.Ident
+        kind = TokenKind.tkIdent
 
       tokens.add(Token(kind: kind, text: buf))
       continue
 
     case text[i]
     of '(':
-      tokens.add(Token(kind: TokenKind.OParen, text: "("))
+      tokens.add(Token(kind: TokenKind.tkOParen, text: "("))
     of ')':
-      tokens.add(Token(kind: TokenKind.CParen, text: ")"))
+      tokens.add(Token(kind: TokenKind.tkCParen, text: ")"))
     of ';':
-      tokens.add(Token(kind: TokenKind.SemiColon, text: ";"))
+      tokens.add(Token(kind: TokenKind.tkSemiColon, text: ";"))
     of ',':
-      tokens.add(Token(kind: TokenKind.Comma, text: ","))
+      tokens.add(Token(kind: TokenKind.tkComma, text: ","))
     of '"':
       inc i
       var buf: string
       while text[i] != '"':
         buf &= $text[i]
         inc i
-      tokens.add(Token(kind: TokenKind.String, text: buf))
+      tokens.add(Token(kind: TokenKind.tkString, text: buf))
     of '$':
       inc i
       var buf: string
       while isAlphaNumeric(text[i]):
         buf &= $text[i]
         inc i
-      tokens.add(Token(kind: TokenKind.VariableRef, text: buf))
+      tokens.add(Token(kind: TokenKind.tkVariableRef, text: buf))
       dec i # magic trick
     else:
       raise newException(
@@ -246,4 +274,5 @@ proc tokenize*(text: string): seq[Token] =
     inc i
     continue
 
+  tokens.add(Token(kind: TokenKind.tkEof, text: ""))
   return tokens

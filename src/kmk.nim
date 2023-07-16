@@ -1,6 +1,7 @@
 import os
 import system
 import std/[parseopt, strformat]
+import print
 
 import parser
 
@@ -34,7 +35,9 @@ proc main: int =
   let text = readAll(file)
   let tokens = tokenize(text)
   var parser = newParser(tokens)
-  parser.parse()
+  let nodes = parser.parse()
+
+  print nodes
 
   return 0
 
