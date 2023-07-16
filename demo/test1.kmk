@@ -1,5 +1,5 @@
 function main(testArg, anotherArg)
 begin
-	print("hello", "world");
+	print("hello", "world", $testArg);
 end
 

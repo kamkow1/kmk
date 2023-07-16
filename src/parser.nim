@@ -13,6 +13,7 @@ type
     String,
     SemiColon,
     Comma,
+    VariableRef
 
   Token = object
     kind: TokenKind
@@ -29,6 +30,7 @@ type
   ExprKind = enum
     StringLiteral,
     FunctionCall,
+    VariableRef
 
   Expr = ref object of RootObj
     kind: ExprKind
@@ -43,32 +45,29 @@ type
   StringLiteralExpr = ref object of Expr
     text: string
 
+  VariableRefExpr = ref object of Expr
+    name: string
+
   Function = object
     name: string
     arguments: seq[string]
     body: seq[Statement]
 
 func newParser*(tokens: seq[Token]): Parser =
-  return Parser(tokens: tokens, current: 0)
+  return Parser(tokens: tokens, current: -1)
 
-func consume(self: var Parser): Token {.discardable.} =
-  let token = self.tokens[self.current]
+proc consume(self: var Parser): Token {.discardable.} =
   inc self.current
-  return token
+  return self.tokens[self.current]
 
 func current(self: Parser): Token =
   return self.tokens[self.current]
-
-func previous(self: Parser): Token =
-  assert(self.current - 1 >= 0)
-  return self.tokens[self.current - 1]
 
 proc parseExpr(self: var Parser): Expr =
   var current = self.current()
 
   if current.kind == TokenKind.Comma:
-    self.consume() # consume `,`
-    current = self.consume()
+    current = self.consume() # consume `,`
 
   case current.kind
   of TokenKind.String: # string literal
@@ -82,15 +81,23 @@ proc parseExpr(self: var Parser): Expr =
       name: current.text,
       arguments: newSeq[Expr](),
     )
-    self.consume() # omit `(`
-    while self.consume().kind != TokenKind.CParen:
+    self.consume() # consume `(`
+    var token = self.consume()
+    while token.kind != TokenKind.CParen:
       let expression = self.parseExpr()
       functionCallExpr.arguments.add(expression)
+      token = self.consume()
+    self.consume()
     return functionCallExpr
+  of TokenKind.VariableRef: # variable reference
+    return VariableRefExpr(
+      kind: ExprKind.VariableRef,
+      name: current.text,
+    )
   else:
     raise newException(
       UnexpectedTokenError,
-      "Unhandled token " & $current.kind,
+      "parseExpr(): Unhandled token " & $current,
     )
 
 proc parseStatement(self: var Parser): Statement =
@@ -98,23 +105,22 @@ proc parseStatement(self: var Parser): Statement =
   if self.current().kind != SemiColon:
     raise newException(
       UnexpectedTokenError,
-      "Expected `;` but found " & $self.current(),
+      "parseStatement(): Expected `;` but found " & $self.current(),
     )
   return Statement(expression: expression)
 
 proc parseBlock(self: var Parser): seq[Statement] =
   var statements = newSeq[Statement]()
-  while self.current().kind != TokenKind.End:
+
+  while self.consume().kind != TokenKind.End:
     let statement = self.parseStatement()
     statements.add(statement)
-    self.consume()
 
   if self.current().kind != TokenKind.End:
     raise newException(
       UnexpectedTokenError,
-      "Unclosed block. Expected `end`",
+      "parseBlock(): Unclosed block. Expected `end`",
     )
-
   return statements
 
 proc parseFunctionArguments(self: var Parser): seq[string] =
@@ -130,7 +136,9 @@ proc parseFunctionArguments(self: var Parser): seq[string] =
     if token.kind != TokenKind.Ident:
       raise newException(
         UnexpectedTokenError,
-        "Expected `" & $TokenKind.Ident & "` but got `" & $token.kind & "`",
+        "parseFunctionArguments() Expected `" &
+        $TokenKind.Ident &
+        "` but got `" & $token.kind & "`",
       )
 
     arguments.add(token.text)
@@ -139,7 +147,7 @@ proc parseFunctionArguments(self: var Parser): seq[string] =
   if token.kind != TokenKind.CParen:
     raise newException(
       UnexpectedTokenError,
-      "Unclosed parenthesis. Expected `)`",
+      "parseFunctionArguments(): Unclosed parenthesis. Expected `)`",
     )
 
   return arguments
@@ -172,7 +180,7 @@ proc parse*(self: var Parser) =
   else:
     raise newException(
       UnhandledTokenError,
-      "Found an unhandled token `" & $token.kind & "`",
+      "parse(): Found an unhandled token `" & $token.kind & "`",
     )
 
 proc tokenize*(text: string): seq[Token] =
@@ -219,14 +227,21 @@ proc tokenize*(text: string): seq[Token] =
       inc i
       var buf: string
       while text[i] != '"':
-        buf = buf & $text[i]
+        buf &= $text[i]
         inc i
-
       tokens.add(Token(kind: TokenKind.String, text: buf))
+    of '$':
+      inc i
+      var buf: string
+      while isAlphaNumeric(text[i]):
+        buf &= $text[i]
+        inc i
+      tokens.add(Token(kind: TokenKind.VariableRef, text: buf))
+      dec i # magic trick
     else:
       raise newException(
         UnclassifiedTokenError,
-        "Found an unclassified token `" & $text[i] & "`",
+        "tokenize(): Found an unclassified token `" & $text[i] & "`",
       )
     inc i
     continue
