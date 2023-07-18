@@ -20,9 +20,9 @@ type
     of rtrNone: noneValue: string
   
   RTFunction = ref object
-    name*: string
-    arguments*: seq[string]
-    body*: seq[Statement]
+    name: string
+    arguments: seq[string]
+    body: seq[Statement]
   
   BuiltinFunction = proc (args: seq[RTResult]): RTResult
 
