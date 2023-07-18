@@ -77,31 +77,31 @@ proc parseExpr(self: var Parser): Expr =
     current = self.consume() # consume `,`
 
   case current.kind
-  of TokenKind.tkString: # string literal
+  of tkString: # string literal
     return StringLiteralExpr(
-      nodeKind: NodeKind.nkExpression,
-      exprKind: ExprKind.ekStringLiteral,
+      nodeKind: nkExpression,
+      exprKind: ekStringLiteral,
       text: current.text,
     )
-  of TokenKind.tkIdent: # function call
+  of tkIdent: # function call
     var functionCallExpr = FunctionCallExpr(
-      nodeKind: NodeKind.nkExpression,
-      exprKind: ExprKind.ekFunctionCall,
+      nodeKind: nkExpression,
+      exprKind: ekFunctionCall,
       name: current.text,
       arguments: newSeq[Expr](),
     )
     self.consume() # consume `(`
     var token = self.consume()
-    while token.kind != TokenKind.tkCParen:
+    while token.kind != tkCParen:
       let expression = self.parseExpr()
       functionCallExpr.arguments.add(expression)
       token = self.consume()
     self.consume()
     return functionCallExpr
-  of TokenKind.tkVariableRef: # variable reference
+  of tkVariableRef: # variable reference
     return VariableRefExpr(
-      nodeKind: NodeKind.nkExpression,
-      exprKind: ExprKind.ekVariableRef,
+      nodeKind: nkExpression,
+      exprKind: ekVariableRef,
       name: current.text,
     )
   else:
@@ -112,24 +112,24 @@ proc parseExpr(self: var Parser): Expr =
 
 proc parseStatement(self: var Parser): Statement =
   let expression = self.parseExpr()
-  if self.current().kind != TokenKind.tkSemiColon:
+  if self.current().kind != tkSemiColon:
     raise newException(
       UnexpectedTokenError,
       "parseStatement(): Expected `;` but found " & $self.current(),
     )
   return Statement(
-    nodeKind: NodeKind.nkStatement,
+    nodeKind: nkStatement,
     expression: expression,
   )
 
 proc parseBlock(self: var Parser): seq[Statement] =
   var statements = newSeq[Statement]()
 
-  while self.consume().kind != TokenKind.tkEnd:
+  while self.consume().kind != tkEnd:
     let statement = self.parseStatement()
     statements.add(statement)
 
-  if self.current().kind != TokenKind.tkEnd:
+  if self.current().kind != tkEnd:
     raise newException(
       UnexpectedTokenError,
       "parseBlock(): Unclosed block. Expected `end`",
@@ -141,12 +141,12 @@ proc parseFunctionArguments(self: var Parser): seq[string] =
     arguments = newSeq[string]()
     token = self.consume()
 
-  while token.kind != TokenKind.tkCParen:
-    if token.kind == TokenKind.tkComma:
+  while token.kind != tkCParen:
+    if token.kind == tkComma:
       token = self.consume()
       continue
 
-    if token.kind != TokenKind.tkIdent:
+    if token.kind != tkIdent:
       raise newException(
         UnexpectedTokenError,
         "parseFunctionArguments() Expected `" &
@@ -157,7 +157,7 @@ proc parseFunctionArguments(self: var Parser): seq[string] =
     arguments.add(token.text)
     token = self.consume()
 
-  if token.kind != TokenKind.tkCParen:
+  if token.kind != tkCParen:
     raise newException(
       UnexpectedTokenError,
       "parseFunctionArguments(): Unclosed parenthesis. Expected `)`",
@@ -172,19 +172,19 @@ proc parseFunction(self: var Parser): Function =
     arguments: seq[string]
     body: seq[Statement]
 
-  while token.kind != TokenKind.tkEnd:
+  while token.kind != tkEnd:
     case token.kind
-    of TokenKind.tkIdent:
+    of tkIdent:
       name = token.text
-    of TokenKind.tkOParen:
+    of tkOParen:
       arguments = self.parseFunctionArguments()
-    of TokenKind.tkBegin:
+    of tkBegin:
       body = self.parseBlock()
       break # nothing left to parse
     else: discard
     token = self.consume()
   return Function(
-    nodeKind: NodeKind.nkFunction,
+    nodeKind: nkFunction,
     name: name,
     arguments: arguments,
     body: body
@@ -195,12 +195,12 @@ proc parse*(self: var Parser): seq[Node] =
     token = self.consume()
     nodes = newSeq[Node]()
 
-  while token.kind != TokenKind.tkEof:
+  while token.kind != tkEof:
     case token.kind
-    of TokenKind.tkFunc: # function declaration
+    of tkFunc: # function declaration
       let function = self.parseFunction()
       nodes.add(function)
-    of TokenKind.tkIdent: # function call
+    of tkIdent: # function call
       let statement = self.parseStatement()
       nodes.add(statement)
     else:
@@ -231,40 +231,40 @@ proc tokenize*(text: string): seq[Token] =
       var kind: TokenKind
       case buf:
       of "function":
-        kind = TokenKind.tkFunc
+        kind = tkFunc
       of "end":
-        kind = TokenKind.tkEnd
+        kind = tkEnd
       of "begin":
-        kind = TokenKind.tkBegin
+        kind = tkBegin
       else:
-        kind = TokenKind.tkIdent
+        kind = tkIdent
 
       tokens.add(Token(kind: kind, text: buf))
       continue
 
     case text[i]
     of '(':
-      tokens.add(Token(kind: TokenKind.tkOParen, text: "("))
+      tokens.add(Token(kind: tkOParen, text: "("))
     of ')':
-      tokens.add(Token(kind: TokenKind.tkCParen, text: ")"))
+      tokens.add(Token(kind: tkCParen, text: ")"))
     of ';':
-      tokens.add(Token(kind: TokenKind.tkSemiColon, text: ";"))
+      tokens.add(Token(kind: tkSemiColon, text: ";"))
     of ',':
-      tokens.add(Token(kind: TokenKind.tkComma, text: ","))
+      tokens.add(Token(kind: tkComma, text: ","))
     of '"':
       inc i
       var buf: string
       while text[i] != '"':
         buf &= $text[i]
         inc i
-      tokens.add(Token(kind: TokenKind.tkString, text: buf))
+      tokens.add(Token(kind: tkString, text: buf))
     of '$':
       inc i
       var buf: string
       while isAlphaNumeric(text[i]):
         buf &= $text[i]
         inc i
-      tokens.add(Token(kind: TokenKind.tkVariableRef, text: buf))
+      tokens.add(Token(kind: tkVariableRef, text: buf))
       dec i # magic trick
     else:
       raise newException(
@@ -274,5 +274,5 @@ proc tokenize*(text: string): seq[Token] =
     inc i
     continue
 
-  tokens.add(Token(kind: TokenKind.tkEof, text: ""))
+  tokens.add(Token(kind: tkEof, text: ""))
   return tokens
