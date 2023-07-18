@@ -4,6 +4,7 @@ import std/[parseopt, strformat]
 import print
 
 import parser
+import visitor
 
 proc printHelp =
   echo fmt"Usage:"
@@ -36,8 +37,9 @@ proc main: int =
   let tokens = tokenize(text)
   var parser = newParser(tokens)
   let nodes = parser.parse()
-
   print nodes
+  let visitor = newVisitor(nodes)
+  visitor.visit()
 
   return 0
 

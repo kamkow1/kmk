@@ -4,3 +4,5 @@ begin
 end
 
 print("kamkow1");
+
+main("one", "two");

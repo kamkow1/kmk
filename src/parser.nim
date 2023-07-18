@@ -26,39 +26,39 @@ type
     tokens: seq[Token]
     current: int
   
-  NodeKind = enum
+  NodeKind* = enum
     nkFunction,
     nkStatement,
     nkExpression,
 
-  Node = ref object of RootObj
-    nodeKind: NodeKind
+  Node* = ref object of RootObj
+    nodeKind*: NodeKind
 
-  ExprKind = enum
+  ExprKind* = enum
     ekStringLiteral,
     ekFunctionCall,
     ekVariableRef
 
-  Expr = ref object of Node
-    exprKind: ExprKind
+  Expr* = ref object of Node
+    exprKind*: ExprKind
   
-  Statement = ref object of Node
-    expression: Expr
+  Statement* = ref object of Node
+    expression*: Expr
 
-  FunctionCallExpr = ref object of Expr
-    name: string
-    arguments: seq[Expr]
+  FunctionCallExpr* = ref object of Expr
+    name*: string
+    arguments*: seq[Expr]
 
-  StringLiteralExpr = ref object of Expr
-    text: string
+  StringLiteralExpr* = ref object of Expr
+    text*: string
 
-  VariableRefExpr = ref object of Expr
-    name: string
+  VariableRefExpr* = ref object of Expr
+    name*: string
 
-  Function = ref object of Node
-    name: string
-    arguments: seq[string]
-    body: seq[Statement]
+  Function* = ref object of Node
+    name*: string
+    arguments*: seq[string]
+    body*: seq[Statement]
 
 func newParser*(tokens: seq[Token]): Parser =
   return Parser(tokens: tokens, current: -1)
