@@ -130,4 +130,5 @@ proc visit*(self: Visitor) =
       discard self.visitFunction(Function(node))
     of NodeKind.nkStatement:
       discard self.visitStatement(Statement(node))
-    else: discard
+    of NodeKind.nkExpression:
+      discard self.visitExpr(Expr(node))
