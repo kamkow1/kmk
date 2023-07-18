@@ -1,4 +1,4 @@
-import std/[tables, sequtils]
+import std/tables
 import parser
 import print
 
@@ -53,6 +53,16 @@ proc visitStatement(self: Visitor, node: Statement): RTResult
 func newCallFrame(callArgs: Table[string, RTResult]): CallFrame =
   return CallFrame(variables: callArgs)
 
+func topCallFrame(callStack: seq[CallFrame]): CallFrame =
+  return callStack[len(callStack) - 1]
+
+func pushCallFrame(callStack: var seq[CallFrame], frame: CallFrame) =
+  callStack.add(frame)
+
+func popCallFrame(callStack: var seq[CallFrame]) =
+  let l = Natural(len(callStack) - 1)
+  callStack.delete(l)
+
 func rtResultNone(): RTResult =
   return RTResult(kind: rtrNone, noneValue: "NONE")
 
@@ -90,11 +100,16 @@ proc visitFunctionCallExpr(self: Visitor, node: FunctionCallExpr): RTResult =
     for i, argument in function.arguments:
       callArgs[argument] = arguments[i]
 
-    callStack.add(newCallFrame(callArgs))
+    callStack.pushCallFrame(newCallFrame(callArgs))
     for statement in function.body:
       returnValue = self.visitStatement(statement)
+    callStack.popCallFrame()
     return returnValue
   return rtResultNone()
+
+proc visitVariableRefExpr(self: Visitor, node: VariableRefExpr): RTResult =
+  let frame = callStack.topCallFrame()
+  return frame.variables[node.name]
 
 proc visitExpr(self: Visitor, node: Expr): RTResult =
   case node.exprKind:
@@ -102,8 +117,8 @@ proc visitExpr(self: Visitor, node: Expr): RTResult =
     return self.visitFunctionCallExpr(FunctionCallExpr(node))
   of ExprKind.ekStringLiteral:
     return self.visitStringLiteralExpr(StringLiteralExpr(node))
-  else:
-    return rtResultNone()
+  of ExprKind.ekVariableRef:
+    return self.visitVariableRefExpr(VariableRefExpr(node))
 
 proc visitStatement(self: Visitor, node: Statement): RTResult =
   return self.visitExpr(node.expression)

@@ -6,3 +6,4 @@ end
 print("kamkow1");
 
 main("one", "two");
+main("TEST", "two");
