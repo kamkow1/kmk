@@ -47,7 +47,7 @@ var builtin_functions = {
         echo a.noneValue
 }.toTable()
 
-proc visitExpr(self: Visitor, node: Expr): RTResult 
+proc visitExpr(self: Visitor, node: Expr): RTResult
 proc visitStatement(self: Visitor, node: Statement): RTResult
 
 func newCallFrame(callArgs: Table[string, RTResult]): CallFrame =
@@ -63,13 +63,19 @@ func popCallFrame(callStack: var seq[CallFrame]) =
   let l = Natural(len(callStack) - 1)
   callStack.delete(l)
 
+func newObjectInCallFrame(callStack: var seq[CallFrame], name: string, value: RTREsult) =
+  callStack[len(callStack) - 1].variables[name] = value
+
+func getObjectFromCallFrame(callStack: var seq[CallFrame], name: string): RTResult =
+  return callStack.topCallFrame().variables[name]
+
 func rtResultNone(): RTResult =
   return RTResult(kind: rtrNone, noneValue: "NONE")
 
 func newVisitor*(nodes: seq[Node]): Visitor =
   return Visitor(nodes: nodes)
 
-proc visitFunction(self: Visitor, node: Function): RTResult = 
+proc visitFunction(self: Visitor, node: Function): RTResult =
   let rtf = RTFunction(
     name: node.name,
     arguments: node.arguments,
@@ -81,12 +87,12 @@ proc visitFunction(self: Visitor, node: Function): RTResult =
 proc visitStringLiteralExpr(self: Visitor, node: StringLiteralExpr): RTResult =
   return RTResult(kind: rtrString, stringValue: node.text)
 
-proc visitFunctionCallExpr(self: Visitor, node: FunctionCallExpr): RTResult =  
+proc visitFunctionCallExpr(self: Visitor, node: FunctionCallExpr): RTResult =
   let name = node.name
   var arguments = newSeq[RTResult]()
 
   for argument in node.arguments:
-    let a = self.visitExpr(argument) 
+    let a = self.visitExpr(argument)
     arguments.add(a)
 
   if builtin_functions.hasKey(name):
@@ -108,17 +114,25 @@ proc visitFunctionCallExpr(self: Visitor, node: FunctionCallExpr): RTResult =
   return rtResultNone()
 
 proc visitVariableRefExpr(self: Visitor, node: VariableRefExpr): RTResult =
-  let frame = callStack.topCallFrame()
-  return frame.variables[node.name]
+  return callStack.getObjectFromCallFrame(node.name)
+
+proc visitVariableAssignmentExpr(self: Visitor, node: VariableAssignmentExpr): RTResult =
+  let
+    name = node.name
+    value = self.visitExpr(node.value)
+
+  callStack.newObjectInCallFrame(name, value)
 
 proc visitExpr(self: Visitor, node: Expr): RTResult =
   case node.exprKind:
-  of ExprKind.ekFunctionCall:
+  of ekFunctionCall:
     return self.visitFunctionCallExpr(FunctionCallExpr(node))
-  of ExprKind.ekStringLiteral:
+  of ekStringLiteral:
     return self.visitStringLiteralExpr(StringLiteralExpr(node))
-  of ExprKind.ekVariableRef:
+  of ekVariableRef:
     return self.visitVariableRefExpr(VariableRefExpr(node))
+  of ekAssignment:
+    return self.visitVariableAssignmentExpr(VariableAssignmentExpr(node))
 
 proc visitStatement(self: Visitor, node: Statement): RTResult =
   return self.visitExpr(node.expression)

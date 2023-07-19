@@ -12,7 +12,9 @@ type
     tkString,
     tkSemiColon,
     tkComma,
-    tkVariableRef
+    tkVariableRef,
+    tkSet,
+    tkEquals,
 
   Token = object
     kind: TokenKind
@@ -37,7 +39,8 @@ type
   ExprKind* = enum
     ekStringLiteral,
     ekFunctionCall,
-    ekVariableRef
+    ekVariableRef,
+    ekAssignment,
 
   Expr* = ref object of Node
     exprKind*: ExprKind
@@ -54,6 +57,10 @@ type
 
   VariableRefExpr* = ref object of Expr
     name*: string
+
+  VariableAssignmentExpr* = ref object of Expr
+    name*: string
+    value*: Expr
 
   Function* = ref object of Node
     name*: string
@@ -103,6 +110,20 @@ proc parseExpr(self: var Parser): Expr =
       nodeKind: nkExpression,
       exprKind: ekVariableRef,
       name: current.text,
+    )
+  of tkSet: # assignment
+    let
+      ident = self.consume()
+      name = ident.text
+    self.consume() # consume `=`
+    self.consume() # set to next
+    let expression = self.parseExpr()
+    self.consume()
+    return VariableAssignmentExpr(
+      nodeKind: nkExpression,
+      exprKind: ekAssignment,
+      name: name,
+      value: expression,
     )
   else:
     raise newException(
@@ -197,6 +218,8 @@ proc parse*(self: var Parser): seq[Node] =
 
   while token.kind != tkEof:
     case token.kind
+    of tkSet: # assignment
+      echo "TODO: assignment"
     of tkFunc: # function declaration
       let function = self.parseFunction()
       nodes.add(function)
@@ -236,6 +259,8 @@ proc tokenize*(text: string): seq[Token] =
         kind = tkEnd
       of "begin":
         kind = tkBegin
+      of "set":
+        kind = tkSet
       else:
         kind = tkIdent
 
@@ -251,6 +276,8 @@ proc tokenize*(text: string): seq[Token] =
       tokens.add(Token(kind: tkSemiColon, text: ";"))
     of ',':
       tokens.add(Token(kind: tkComma, text: ","))
+    of '=':
+      tokens.add(Token(kind: tkEquals, text: "="))
     of '"':
       inc i
       var buf: string
