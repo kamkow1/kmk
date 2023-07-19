@@ -1,5 +1,7 @@
 import std/strutils
 
+import print
+
 type
   TokenKind = enum
     tkEof,
@@ -18,6 +20,7 @@ type
     tkUnset,
     tkTrue,
     tkFalse,
+    tkWhen,
 
   Token = object
     kind: TokenKind
@@ -46,6 +49,7 @@ type
     ekAssignment,
     ekUnsetVariable,
     ekBoolean,
+    ekWhen,
 
   Expr* = ref object of Node
     exprKind*: ExprKind
@@ -72,11 +76,17 @@ type
 
   BooleanExpr* = ref object of Expr
     value*: bool
+  
+  WhenExpr* = ref object of Expr
+    condition*: Expr
+    body*: seq[Statement]
 
   Function* = ref object of Node
     name*: string
     arguments*: seq[string]
     body*: seq[Statement]
+
+proc parseBlock(self: var Parser): seq[Statement]
 
 func newParser*(tokens: seq[Token]): Parser =
   return Parser(tokens: tokens, current: -1)
@@ -158,6 +168,29 @@ proc parseExpr(self: var Parser): Expr =
       exprKind: ekBoolean,
       value: false,
     )
+  of tkWhen:
+    self.consume() # `(`
+    self.consume() # net to next
+
+    let condition = self.parseExpr()
+    if self.consume().kind != tkCParen:
+      raise newException(
+        UnexpectedTokenError,
+        "parseExpr(): Unclosed parenthesis in when block. " &
+        "expected `(` but got" & $self.current(),
+      )
+
+    self.consume() # `begin`
+    let statements = self.parseBlock()
+    self.consume() # `end`
+
+    return WhenExpr(
+      nodeKind: nkExpression,
+      exprKind: ekWhen,
+      condition: condition,
+      body: statements,
+    )
+
   else:
     raise newException(
       UnexpectedTokenError,
@@ -251,6 +284,8 @@ proc parse*(self: var Parser): seq[Node] =
 
   while token.kind != tkEof:
     case token.kind
+    of tkWhen: # when block
+      echo "TODO"
     of tkSet: # assignment
       let statement = self.parseStatement()
       nodes.add(statement)
@@ -307,6 +342,8 @@ proc tokenize*(text: string): seq[Token] =
         kind = tkTrue
       of "false":
         kind = tkFalse
+      of "when":
+        kind = tkWhen
       else:
         kind = tkIdent
 

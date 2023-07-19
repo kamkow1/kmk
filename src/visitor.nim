@@ -1,5 +1,6 @@
 import std/tables
 import parser
+import print
 
 type
   Visitor* = ref object
@@ -144,6 +145,28 @@ proc visitVariableUnsetExpr(self: Visitor, node: VariableUnsetExpr): RTResult =
 proc visitBooleanExpr(self: Visitor, node: BooleanExpr): RTResult =
   return RTResult(kind: rtrBoolean, boolValue: node.value)
 
+proc visitWhenExpr(self: Visitor, node: WhenExpr): RTResult =
+  let conditionExpr = self.visitExpr(node.condition)
+
+  var condition: bool
+  case conditionExpr.kind
+  of rtrBoolean:
+    condition = conditionExpr.boolValue
+  of rtrInt:
+    condition = conditionExpr.intValue == 1
+  of rtrFloat:
+    condition = conditionExpr.floatValue == 1.0
+  of rtrString:
+    condition = conditionExpr.stringValue == "true"
+  of rtrNone:
+    condition = false
+
+  var returnValue: RTResult
+  if condition:
+    for statement in node.body:
+      returnValue = self.visitStatement(statement)
+  return returnValue
+
 proc visitExpr(self: Visitor, node: Expr): RTResult =
   case node.exprKind:
   of ekFunctionCall:
@@ -158,6 +181,8 @@ proc visitExpr(self: Visitor, node: Expr): RTResult =
     return self.visitVariableUnsetExpr(VariableUnsetExpr(node))
   of ekBoolean:
     return self.visitBooleanExpr(BooleanExpr(node))
+  of ekWhen:
+    return self.visitWhenExpr(WhenExpr(node))
 
 proc visitStatement(self: Visitor, node: Statement): RTResult =
   return self.visitExpr(node.expression)
