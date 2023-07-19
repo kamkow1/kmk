@@ -16,6 +16,8 @@ type
     tkSet,
     tkEquals,
     tkUnset,
+    tkTrue,
+    tkFalse,
 
   Token = object
     kind: TokenKind
@@ -43,6 +45,7 @@ type
     ekVariableRef,
     ekAssignment,
     ekUnsetVariable,
+    ekBoolean,
 
   Expr* = ref object of Node
     exprKind*: ExprKind
@@ -66,6 +69,9 @@ type
 
   VariableUnsetExpr* = ref object of Expr
     name*: string
+
+  BooleanExpr* = ref object of Expr
+    value*: bool
 
   Function* = ref object of Node
     name*: string
@@ -139,6 +145,18 @@ proc parseExpr(self: var Parser): Expr =
       nodeKind: nkExpression,
       exprKind: ekUnsetVariable,
       name: name,
+    )
+  of tkTrue:
+    return BooleanExpr(
+      nodeKind: nkExpression,
+      exprKind: ekBoolean,
+      value: true,
+    )
+  of tkFalse:
+    return BooleanExpr(
+      nodeKind: nkExpression,
+      exprKind: ekBoolean,
+      value: false,
     )
   else:
     raise newException(
@@ -264,9 +282,7 @@ proc tokenize*(text: string): seq[Token] =
       while text[i] != '\n':
         inc i
       inc i
-      if text[i] == '\n':
-        inc i
-
+      continue
 
     # possible identifier or keyword
     if isAlphaAscii(text[i]):
@@ -287,6 +303,10 @@ proc tokenize*(text: string): seq[Token] =
         kind = tkSet
       of "unset":
         kind = tkUnset
+      of "true":
+        kind = tkTrue
+      of "false":
+        kind = tkFalse
       else:
         kind = tkIdent
 

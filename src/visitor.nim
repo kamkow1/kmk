@@ -9,6 +9,7 @@ type
     rtrInt
     rtrFloat
     rtrString
+    rtrBoolean
     rtrNone
 
   RTResult = ref object
@@ -17,6 +18,7 @@ type
     of rtrFloat: floatValue: float
     of rtrString: stringValue: string
     of rtrNone: noneValue: string
+    of rtrBoolean: boolValue: bool
   
   RTFunction = ref object
     name: string
@@ -42,6 +44,8 @@ var builtin_functions = {
         stdout.write(a.intValue)
       of rtrFloat:
         stdout.write(a.floatValue)
+      of rtrBoolean:
+        stdout.write(a.boolValue)
       of rtrNone:
         stdout.write(a.noneValue)
 
@@ -137,6 +141,9 @@ proc visitVariableUnsetExpr(self: Visitor, node: VariableUnsetExpr): RTResult =
   let name = node.name
   return callStack.removeObjectFromCallFrame(name)
 
+proc visitBooleanExpr(self: Visitor, node: BooleanExpr): RTResult =
+  return RTResult(kind: rtrBoolean, boolValue: node.value)
+
 proc visitExpr(self: Visitor, node: Expr): RTResult =
   case node.exprKind:
   of ekFunctionCall:
@@ -149,6 +156,8 @@ proc visitExpr(self: Visitor, node: Expr): RTResult =
     return self.visitVariableAssignmentExpr(VariableAssignmentExpr(node))
   of ekUnsetVariable:
     return self.visitVariableUnsetExpr(VariableUnsetExpr(node))
+  of ekBoolean:
+    return self.visitBooleanExpr(BooleanExpr(node))
 
 proc visitStatement(self: Visitor, node: Statement): RTResult =
   return self.visitExpr(node.expression)

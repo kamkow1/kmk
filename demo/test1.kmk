@@ -9,6 +9,11 @@ begin
 	print("ahhaahhah", $variable);
 	unset variable;
 	# print("ahhaahhah ", $variable); # this should fail
+	set condition = true;
+	print($condition);
+	
+	set condition = false;
+	print($condition);
 end
 
 print("kamkow1");
