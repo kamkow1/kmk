@@ -69,6 +69,11 @@ func newObjectInCallFrame(callStack: var seq[CallFrame], name: string, value: RT
 func getObjectFromCallFrame(callStack: var seq[CallFrame], name: string): RTResult =
   return callStack.topCallFrame().variables[name]
 
+func removeObjectFromCallFrame(callStack: var seq[CallFrame], name: string): RTResult {.discardable.} =
+  let value = callStack.getObjectFromCallFrame(name)
+  callStack[len(callStack) - 1].variables.del(name)
+  return value
+
 func rtResultNone(): RTResult =
   return RTResult(kind: rtrNone, noneValue: "NONE")
 
@@ -122,6 +127,11 @@ proc visitVariableAssignmentExpr(self: Visitor, node: VariableAssignmentExpr): R
     value = self.visitExpr(node.value)
 
   callStack.newObjectInCallFrame(name, value)
+  return value
+
+proc visitVariableUnsetExpr(self: Visitor, node: VariableUnsetExpr): RTResult =
+  let name = node.name
+  return callStack.removeObjectFromCallFrame(name)
 
 proc visitExpr(self: Visitor, node: Expr): RTResult =
   case node.exprKind:
@@ -133,6 +143,8 @@ proc visitExpr(self: Visitor, node: Expr): RTResult =
     return self.visitVariableRefExpr(VariableRefExpr(node))
   of ekAssignment:
     return self.visitVariableAssignmentExpr(VariableAssignmentExpr(node))
+  of ekUnsetVariable:
+    return self.visitVariableUnsetExpr(VariableUnsetExpr(node))
 
 proc visitStatement(self: Visitor, node: Statement): RTResult =
   return self.visitExpr(node.expression)

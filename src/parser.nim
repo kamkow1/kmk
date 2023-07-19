@@ -15,6 +15,7 @@ type
     tkVariableRef,
     tkSet,
     tkEquals,
+    tkUnset,
 
   Token = object
     kind: TokenKind
@@ -41,6 +42,7 @@ type
     ekFunctionCall,
     ekVariableRef,
     ekAssignment,
+    ekUnsetVariable,
 
   Expr* = ref object of Node
     exprKind*: ExprKind
@@ -61,6 +63,9 @@ type
   VariableAssignmentExpr* = ref object of Expr
     name*: string
     value*: Expr
+
+  VariableUnsetExpr* = ref object of Expr
+    name*: string
 
   Function* = ref object of Node
     name*: string
@@ -124,6 +129,16 @@ proc parseExpr(self: var Parser): Expr =
       exprKind: ekAssignment,
       name: name,
       value: expression,
+    )
+  of tkUnset: # unset variable
+    let
+      ident = self.consume()
+      name = ident.text
+    self.consume()
+    return VariableUnsetExpr(
+      nodeKind: nkExpression,
+      exprKind: ekUnsetVariable,
+      name: name,
     )
   else:
     raise newException(
@@ -219,7 +234,8 @@ proc parse*(self: var Parser): seq[Node] =
   while token.kind != tkEof:
     case token.kind
     of tkSet: # assignment
-      echo "TODO: assignment"
+      let statement = self.parseStatement()
+      nodes.add(statement)
     of tkFunc: # function declaration
       let function = self.parseFunction()
       nodes.add(function)
@@ -261,6 +277,8 @@ proc tokenize*(text: string): seq[Token] =
         kind = tkBegin
       of "set":
         kind = tkSet
+      of "unset":
+        kind = tkUnset
       else:
         kind = tkIdent
 

@@ -1,8 +1,16 @@
 function main(testArg, anotherArg)
 begin
 	set variable = "some text";
+
 	print("hello", "world", $testArg);
+
 	print("ahhaahhah ", $variable);
+
+	set variable = "some text 2222222";
+
+	print("ahhaahhah ", $variable);
+
+	unset variable;
 end
 
 print("kamkow1");
