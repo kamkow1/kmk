@@ -1,6 +1,5 @@
 import std/tables
 import parser
-import print
 
 type
   Visitor* = ref object
@@ -35,16 +34,21 @@ var rtfunctions = initTable[string, RTFunction]()
 
 var builtin_functions = {
   "print": proc (args: seq[RTResult]): RTResult =
-    for a in args:
+    for i, a in args:
       case a.kind
       of rtrString:
-        echo a.stringValue
+        stdout.write(a.stringValue)
       of rtrInt:
-        echo a.intValue
+        stdout.write(a.intValue)
       of rtrFloat:
-        echo a.floatValue
+        stdout.write(a.floatValue)
       of rtrNone:
-        echo a.noneValue
+        stdout.write(a.noneValue)
+
+      if i < len(args) - 1:
+        stdout.write(" ")
+    stdout.write("\n")
+    stdout.flushFile()
 }.toTable()
 
 proc visitExpr(self: Visitor, node: Expr): RTResult

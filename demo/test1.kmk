@@ -2,15 +2,11 @@
 function main(testArg, anotherArg)
 begin
 	set variable = "some text";
-
 	print("hello", "world", $testArg);
-
-	print("ahhaahhah ", $variable);
+	print("ahhaahhah", $variable);
 
 	set variable = "some text 2222222";
-
-	print("ahhaahhah ", $variable);
-
+	print("ahhaahhah", $variable);
 	unset variable;
 	# print("ahhaahhah ", $variable); # this should fail
 end
