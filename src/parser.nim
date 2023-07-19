@@ -260,6 +260,14 @@ proc tokenize*(text: string): seq[Token] =
       inc i
       continue
 
+    if text[i] == '#':
+      while text[i] != '\n':
+        inc i
+      inc i
+      if text[i] == '\n':
+        inc i
+
+
     # possible identifier or keyword
     if isAlphaAscii(text[i]):
       var buf: string

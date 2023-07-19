@@ -1,3 +1,5 @@
+# comment
+
 function main(testArg, anotherArg)
 begin
 	set variable = "some text";
@@ -11,6 +13,7 @@ begin
 	print("ahhaahhah ", $variable);
 
 	unset variable;
+	# print("ahhaahhah ", $variable); # this should fail
 end
 
 print("kamkow1");
