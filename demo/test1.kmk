@@ -1,8 +1,12 @@
+function testFunction(a, b) return ret
+begin
+	set ret = "text abjksdhgjkhdfjk";
+end
 
-function main(testArg, anotherArg)
+function main(a1, a2)
 begin
 	set variable = "some text";
-	print("hello", "world", $testArg);
+	print("hello", "world", $a1);
 	print("ahhaahhah", $variable);
 
 	set variable = "some text 2222222";
@@ -20,9 +24,9 @@ begin
 	begin
 		print("inside of when block", $condition);
 	end;
+
+	set r = testFunction($a1, $a2);
+	print("r =", $r);
 end
 
-print("kamkow1");
-
-main("one", "two");
-main("TEST", "two");
+main("a", "b");

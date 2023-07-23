@@ -24,6 +24,7 @@ type
   RTFunction = ref object
     name: string
     arguments: seq[string]
+    returnName: string
     body: seq[Statement]
   
   BuiltinFunction = proc (args: seq[RTResult]): RTResult
@@ -93,6 +94,7 @@ proc visitFunction(self: Visitor, node: Function): RTResult =
   let rtf = RTFunction(
     name: node.name,
     arguments: node.arguments,
+    returnName: node.returnName,
     body: node.body,
   )
   rtfunctions[node.name] = rtf
@@ -114,15 +116,20 @@ proc visitFunctionCallExpr(self: Visitor, node: FunctionCallExpr): RTResult =
   elif rtfunctions.hasKey(name):
     let function = rtfunctions[name]
     var
-      returnValue: RTResult
       callArgs: Table[string, RTResult]
+      returnValue: RTResult
 
     for i, argument in function.arguments:
       callArgs[argument] = arguments[i]
 
     callStack.pushCallFrame(newCallFrame(callArgs))
     for statement in function.body:
-      returnValue = self.visitStatement(statement)
+      discard self.visitStatement(statement)
+
+    if function.returnName != "":
+      returnValue = callStack.getObjectFromCallFrame(function.returnName)
+    else:
+      returnValue = rtResultNone()
     callStack.popCallFrame()
     return returnValue
   return rtResultNone()

@@ -21,6 +21,7 @@ type
     tkTrue,
     tkFalse,
     tkWhen,
+    tkReturn,
 
   Token = object
     kind: TokenKind
@@ -84,6 +85,7 @@ type
   Function* = ref object of Node
     name*: string
     arguments*: seq[string]
+    returnName*: string
     body*: seq[Statement]
 
 proc parseBlock(self: var Parser): seq[Statement]
@@ -199,6 +201,9 @@ proc parseExpr(self: var Parser): Expr =
 
 proc parseStatement(self: var Parser): Statement =
   let expression = self.parseExpr()
+  # weird hack
+  if self.tokens[self.current - 1].kind == tkSemiColon:
+    dec self.current
   if self.current().kind != tkSemiColon:
     raise newException(
       UnexpectedTokenError,
@@ -257,6 +262,7 @@ proc parseFunction(self: var Parser): Function =
     token = self.consume()
     name: string
     arguments: seq[string]
+    returnName: string
     body: seq[Statement]
 
   while token.kind != tkEnd:
@@ -268,13 +274,18 @@ proc parseFunction(self: var Parser): Function =
     of tkBegin:
       body = self.parseBlock()
       break # nothing left to parse
-    else: discard
+    of tkReturn:
+      let t = self.consume()
+      returnName = t.text
+    else:
+      print "parseFunction(): unhandled token:", token
     token = self.consume()
   return Function(
     nodeKind: nkFunction,
     name: name,
     arguments: arguments,
-    body: body
+    returnName: returnName,
+    body: body,
   )
 
 proc parse*(self: var Parser): seq[Node] =
@@ -344,6 +355,8 @@ proc tokenize*(text: string): seq[Token] =
         kind = tkFalse
       of "when":
         kind = tkWhen
+      of "return":
+        kind = tkReturn
       else:
         kind = tkIdent
 
