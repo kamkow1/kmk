@@ -32,6 +32,8 @@ type
   CallFrame = ref object
     variables: Table[string, RTResult]
 
+  UndeclaredVariableError = object of CatchableError
+
 var callStack = newSeq[CallFrame]()
 
 var rtfunctions = initTable[string, RTFunction]()
@@ -60,7 +62,7 @@ var builtin_functions = {
 proc visitExpr(self: Visitor, node: Expr): RTResult
 proc visitStatement(self: Visitor, node: Statement): RTResult
 
-func newCallFrame(callArgs: Table[string, RTResult]): CallFrame =
+func newCallFrame(callArgs: Table[string, RTResult] = initTable[string, RTResult]()): CallFrame =
   return CallFrame(variables: callArgs)
 
 func topCallFrame(callStack: seq[CallFrame]): CallFrame =
@@ -83,6 +85,9 @@ func removeObjectFromCallFrame(callStack: var seq[CallFrame], name: string): RTR
   let value = callStack.getObjectFromCallFrame(name)
   callStack[len(callStack) - 1].variables.del(name)
   return value
+
+proc initRuntime* =
+  callStack.add(newCallFrame())
 
 func rtResultNone(): RTResult =
   return RTResult(kind: rtrNone, noneValue: "NONE")
@@ -135,7 +140,14 @@ proc visitFunctionCallExpr(self: Visitor, node: FunctionCallExpr): RTResult =
   return rtResultNone()
 
 proc visitVariableRefExpr(self: Visitor, node: VariableRefExpr): RTResult =
-  return callStack.getObjectFromCallFrame(node.name)
+  for frame in callStack:
+    if node.name in frame.variables:
+      return frame.variables[node.name]
+
+  raise newException(
+    UndeclaredVariableError,
+    "Found an undeclared variable reference: `" & node.name & "`",
+  )
 
 proc visitVariableAssignmentExpr(self: Visitor, node: VariableAssignmentExpr): RTResult =
   let

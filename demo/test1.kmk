@@ -1,3 +1,5 @@
+set GLOBAL = "123";
+
 function testFunction(a, b) return ret
 begin
 	set ret = "text abjksdhgjkhdfjk";
@@ -5,6 +7,9 @@ end
 
 function main(a1, a2)
 begin
+	set globalAccess = $GLOBAL;
+	print($globalAccess);
+
 	set variable = "some text";
 	print("hello", "world", $a1);
 	print("ahhaahhah", $variable);

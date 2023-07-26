@@ -37,6 +37,7 @@ proc main: int =
   var parser = newParser(tokens)
   let nodes = parser.parse()
   let visitor = newVisitor(nodes)
+  initRuntime()
   visitor.visit()
 
   return 0
