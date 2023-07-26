@@ -1,0 +1,10 @@
+function main(text)
+return ret
+begin
+	print("inside of main()", $text);
+	set ret = "return value of main()";
+end
+
+set mainResult = main("hello world");
+print($mainResult);
+
