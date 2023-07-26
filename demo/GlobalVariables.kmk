@@ -1,0 +1,4 @@
+set GLOBAL1 = "hello";
+set GLOBAL2 = "world";
+
+print($GLOBAL1, $GLOBAL2);
